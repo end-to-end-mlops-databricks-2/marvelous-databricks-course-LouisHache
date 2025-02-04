@@ -1,26 +1,65 @@
 from class_warfare_solver.utils.methods import initialize_spark
 import pandas as pd
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, functions as F
 
 class DataFactory():
 
-    def __init__(self, spark:SparkSession):
-        # spark doesn't like data not on dbfs
-        self.class_bases = spark.createDataFrame(pd.read_csv("../../../data/Class Bases.csv"))
-        self.class_growths = spark.createDataFrame(pd.read_csv("../../../data/Class Growths.csv"))
-        self.character_bases = spark.createDataFrame(pd.read_csv("../../../data/Character Bases.csv"))
-        self.character_growths = spark.createDataFrame(pd.read_csv("../../../data/Character Growths.csv"))
+    def __init__(self, spark:SparkSession, databricks=False):
+        # spark doesn't like data not on dbfs, will move to volumes later
+        # Plus that way columns will be correct type instead of all str
+        prefix = "../../../" if not databricks else ""
+        self._class_bases = spark.createDataFrame(pd.read_csv(f"{prefix}data/Class Bases.csv"))
+        self._class_growths = spark.createDataFrame(pd.read_csv(f"{prefix}data/Class Growths.csv"))
+        self._character_bases = spark.createDataFrame(pd.read_csv(f"{prefix}data/Character Bases.csv"))
+        self._character_growths = spark.createDataFrame(pd.read_csv(f"{prefix}data/Character Growths.csv"))
 
     def get_class_bases(self):
-        self.class_bases.show()
-        self.class_growths.show()
-        self.character_bases.show()
-        self.character_growths.show()
-        pass
+        class_bases = self._class_bases
+        
+        class_bases = (
+            class_bases
+            .withColumn("Class", F.trim(F.get(F.split(class_bases.Class, '[(*)]', 2), 0)))
+            .withColumn("Class", F.split(class_bases.Class, '[/,]', 2))
+            .withColumn("Class", F.explode(class_bases.Class))
+            .withColumn("Class", F.trim(F.col('Class')))
+            .where(F.col("Class").isNotNull() & (F.col("Class") != ""))
+            .where(F.col("Game") != "Game")
+            .dropDuplicates(["Game", "Class"])
+            .fillna("0", subset=["Lck"])
+            .withColumn("Mag", F.when(F.col("Mag").isNull(), F.col("Str")).otherwise(F.col("Mag")))
+            .withColumn("Res", F.when(F.col("Res").isNull(), F.col("Def")).otherwise(F.col("Res")))
+            .withColumn("Mov", F.trim(F.get(F.split(class_bases.Mov, '[»]', 2), 0)))
+        )
+        self._class_bases = class_bases.select([
+            "Game", "Class", "HP", "Str", "Mag", "Skl", "Spd", "Lck", "Def", "Res", "Mov"
+        ])
+        self._class_bases.show()
+        return self._class_bases
+    
+    def get_class_growths(self):
+        class_growths = self._class_growths
+        class_growths = (class_growths
+            .withColumn("Class", F.trim(F.get(F.split(class_growths.Class, '[(*)]', 2), 0)))
+            .withColumn("Class", F.split(class_growths.Class, '[/,]', 4))
+            .withColumn("Class", F.explode(class_growths.Class))
+            .withColumn("Class", F.trim(F.col('Class')))
+            .where(F.col("Class").isNotNull() & (F.col("Class") != ""))
+            .where(F.col("Game") != "Game")
+            .dropDuplicates(["Game", "Class"])
+            .withColumn("Mag", F.when(F.col("Mag").isNull() & F.col("Game").isin([2, 6, 7, 8]), F.col("Str")).otherwise(F.col("Mag")))
+            .withColumn("Res", F.when(F.col("Res").isNull() & F.col("Game").isin([5]), F.col("Def")).otherwise(F.col("Res")))
+            .fillna("0")
+        )
+
+        self._class_growths = class_growths.select([
+            "Game", "Class", "HP", "Str", "Mag", "Skl", "Spd", "Lck", "Def", "Res"
+        ])
+        self._class_growths.show()
+        return self._class_growths
 
 if __name__ == "__main__":
     spark = initialize_spark()
 
     df = DataFactory(spark)
 
-    df.get_class_bases()
+    df.get_class_growths()

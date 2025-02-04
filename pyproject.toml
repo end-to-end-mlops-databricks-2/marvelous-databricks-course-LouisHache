@@ -1,5 +1,5 @@
 [project]
-name = "class-warfare-solver"
+name = "class_warfare_solver"
 version = "0.0.1"
 description = "Solving Class Warfare one unit at a time"
 requires-python = ">=3.11, <3.12"
@@ -30,10 +30,6 @@ dev = ["databricks-connect>=15.4.1, <16",
 requires = [
   "setuptools>=72.0"]
 build-backend = "setuptools.build_meta"
-
-[tool.setuptools.packages.find]
-where =["src"]
-include = ["class_warfare_solver"]
 
 [tool.ruff]
 line-length = 120
