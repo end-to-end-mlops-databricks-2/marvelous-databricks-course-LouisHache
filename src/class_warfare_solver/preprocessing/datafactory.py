@@ -56,10 +56,32 @@ class DataFactory():
         ])
         self._class_growths.show()
         return self._class_growths
+    
+    def get_character_bases(self):
+        character_bases = self._character_bases
+
+        character_bases = (
+            character_bases
+            .withColumn("Name", F.trim(F.get(F.split(character_bases.Name, '[ *]', 2), 0)))
+            .where(F.col("Class").isNotNull()).dropDuplicates(["Game", "Name"])
+            .withColumn("Class", F.trim(F.get(F.split(character_bases.Class, '[ *]', 2), 0)))
+            .where(F.col("Game") != "Game")
+            .withColumn("Mag", F.when(F.col("Mag").isNull() & F.col("Game").isin([2, 6, 7, 8]), F.col("Str")).otherwise(F.col("Mag")))
+            .withColumn("Res", F.when(F.col("Res").isNull() & F.col("Game").isin([5]), F.col("Def")).otherwise(F.col("Res")))
+            .fillna("0", subset=["Mov"])
+        )
+        for col in ["HP", "Str", "Mag", "Skl", "Spd", "Lck", "Def", "Res", "Mov"]:
+            character_bases = character_bases.withColumn(col, F.cast(int, F.get(F.split(F.col(col), '[+]', 2), 0)))
+
+        self._character_bases = character_bases.select([
+            "Game", "Name", "Class", "HP", "Str", "Mag", "Skl", "Spd", "Lck", "Def", "Res", "Mov"
+        ])
+        self._character_bases.show()
+        return self._character_bases
 
 if __name__ == "__main__":
     spark = initialize_spark()
 
     df = DataFactory(spark)
 
-    df.get_class_growths()
+    df.get_character_bases()
