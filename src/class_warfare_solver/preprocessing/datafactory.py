@@ -6,7 +6,7 @@ from pyspark.sql import functions as F
 
 
 class DataFactory:
-    def __init__(self, spark:SparkSession, databricks=False):
+    def __init__(self, spark: SparkSession, databricks=False):
         self.spark = spark
         self.prefix = "../../../" if not databricks else ""
         self._is_data_cleaned = False
@@ -41,7 +41,7 @@ class DataFactory:
         # Game 13 is our test set since characters don't have attributed classes
         test_set = self.character_df.where(F.col("Game") == 13)
 
-        games = list(range(1,15))
+        games = list(range(1, 15))
         games.remove(13)
 
         train_set = self.spark.createDataFrame([], self.character_df.schema)
@@ -56,21 +56,14 @@ class DataFactory:
             train_set = train_set.union(split_A)
             validation_set = validation_set.union(split_B)
 
+        catalog = os.getenv("VOLUME")
+        schema = os.getenv("SCHEMA")
 
-        catalog = os.getenv('VOLUME')
-        schema = os.getenv('SCHEMA')
+        train_set.write.mode("overwrite").saveAsTable(f"{catalog}.{schema}.train_set")
 
-        train_set.write.mode("overwrite").saveAsTable(
-            f"{catalog}.{schema}.train_set"
-        )
+        validation_set.write.mode("overwrite").saveAsTable(f"{catalog}.{schema}.validation_set")
 
-        validation_set.write.mode("overwrite").saveAsTable(
-            f"{catalog}.{schema}.validation_set"
-        )
-
-        test_set.write.mode("overwrite").saveAsTable(
-            f"{catalog}.{schema}.test_set"
-        )
+        test_set.write.mode("overwrite").saveAsTable(f"{catalog}.{schema}.test_set")
 
         return None
 
