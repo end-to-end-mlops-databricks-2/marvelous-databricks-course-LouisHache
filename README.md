@@ -1,26 +1,20 @@
 <h1 align="center">
-Marvelous MLOps End-to-end MLOps with Databricks course
+The Ultimate Class Warfare Resolver
 
-## Practical information
-- Weekly lectures on Wednesdays 16:00-18:00 CET.
-- Code for the lecture is shared before the lecture.
-- Presentation and lecture materials are shared right after the lecture.
-- Video of the lecture is uploaded within 24 hours after the lecture.
+## Description
+Fire Emblem is a series of ~14 RPG games with a LOT of characters, and a lot of different classes
+This project exists to basically find the optimal class for any unit according to their stats and growths
+(Honestly it's not really important, I just wanted to play around with this data to understand the math behind RPG unit design)
 
-- Every week we set up a deliverable, and you implement it with your own dataset.
-- To submit the deliverable, create a feature branch in that repository, and a PR to main branch. The code can be merged after we review & approve & CI pipeline runs successfully.
-- The deliverables can be submitted with a delay (for example, lecture 1 & 2 together), but we expect you to finish all assignments for the course before the 25th of November.
+Data Source: [serenesforest](https://serenesforest.net)
 
 
-## Set up your environment
-In this course, we use Databricks 15.4 LTS runtime, which uses Python 3.11.
-In our examples, we use UV. Check out the documentation on how to install it: https://docs.astral.sh/uv/getting-started/installation/
-
-To create a new environment and create a lockfile, run:
-
-```
-uv venv -p 3.11 venv
-source venv/bin/activate
-uv pip install -r pyproject.toml --all-extras
-uv lock
-```
+## Trivia
+- Not all games use the same stats, so yeah, fun
+- We need to remove the character's base class stats to get their absolute personal ones, fun too
+- I'll be forced to vectorize everything because of power creep
+- I'll probably have to do a PCA on classes, because "Flier" is basically Pegasus Knight with a mustache (and will also reduce the number of categories to predict)
+- Should probably add additional boolean features to class according to gameplay purpose too
+- FE13 will be our testing (not validation) set since its characters don't have base classes
+- FE5 is the hardest game in the series, and it was also by far the hardest to clean. All my homies hate FE5.
+- I'll probably do a config file at some point. But right now I'm just hungry, so PR time it is
