@@ -1,21 +1,21 @@
-import pandas as pd
-from pyspark.sql import functions as F
+import os
 
-from class_warfare_solver.utils.methods import initialize_spark
+import pandas as pd
+from pyspark.sql import SparkSession
+from pyspark.sql import functions as F
 
 
 class DataFactory:
-    def __init__(self, databricks=False):
-        # spark doesn't like data not on dbfs, will move to volumes later
-        # Plus that way columns will be correct type instead of all str
+    def __init__(self, spark:SparkSession, databricks=False):
+        self.spark = spark
         self.prefix = "../../../" if not databricks else ""
         self._is_data_cleaned = False
 
     def load_raw_tables(self):
-        self._class_bases = spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Class Bases.csv"))
-        self._class_growths = spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Class Growths.csv"))
-        self._character_bases = spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Character Bases.csv"))
-        self._character_growths = spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Character Growths.csv"))
+        self._class_bases = self.spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Class Bases.csv"))
+        self._class_growths = self.spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Class Growths.csv"))
+        self._character_bases = self.spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Character Bases.csv"))
+        self._character_growths = self.spark.createDataFrame(pd.read_csv(f"{self.prefix}data/Character Growths.csv"))
 
         return None
 
@@ -34,6 +34,43 @@ class DataFactory:
 
         self._build_class_features()
         self._build_character_features()
+
+        return None
+
+    def split_and_save(self):
+        # Game 13 is our test set since characters don't have attributed classes
+        test_set = self.character_df.where(F.col("Game") == 13)
+
+        games = list(range(1,15))
+        games.remove(13)
+
+        train_set = self.spark.createDataFrame([], self.character_df.schema)
+        validation_set = self.spark.createDataFrame([], self.character_df.schema)
+
+        # Tricky since we want the split to be equal within all games
+        for game in games:
+            game_characters = self.character_df.filter(F.col("Game") == game)
+
+            split_A, split_B = game_characters.randomSplit([0.8, 0.2], seed=42069)
+
+            train_set = train_set.union(split_A)
+            validation_set = validation_set.union(split_B)
+
+
+        catalog = os.getenv('VOLUME')
+        schema = os.getenv('SCHEMA')
+
+        train_set.write.mode("overwrite").saveAsTable(
+            f"{catalog}.{schema}.train_set"
+        )
+
+        validation_set.write.mode("overwrite").saveAsTable(
+            f"{catalog}.{schema}.validation_set"
+        )
+
+        test_set.write.mode("overwrite").saveAsTable(
+            f"{catalog}.{schema}.test_set"
+        )
 
         return None
 
@@ -283,15 +320,3 @@ raw_errror = """
 *+++++++==++****=-:-=======--==--==+++====-------:---:-==----::..:::-------------------:::--------:-
 ********###*###*=::::----:::--------====---:::--::::::..::::::::::....::::::::::::::::::..:::--:::::
 """
-
-if __name__ == "__main__":
-    spark = initialize_spark()
-
-    df = DataFactory()
-
-    df.load_raw_tables()
-    df.search_for_copper()
-    df.find_gold()
-
-    df.class_df.show()
-    df.character_df.show()
