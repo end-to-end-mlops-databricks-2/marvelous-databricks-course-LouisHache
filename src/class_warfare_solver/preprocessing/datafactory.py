@@ -63,7 +63,8 @@ class DataFactory():
         character_bases = (
             character_bases
             .withColumn("Name", F.trim(F.get(F.split(character_bases.Name, '[ *]', 2), 0)))
-            .where(F.col("Class").isNotNull()).dropDuplicates(["Game", "Name"])
+            .where(F.col("Class").isNotNull() | (F.col("Game") == 13))
+            .dropDuplicates(["Game", "Name"])
             .withColumn("Class", F.trim(F.get(F.split(character_bases.Class, '[ *]', 2), 0)))
             .where(F.col("Game") != "Game")
             .withColumn("Mag", F.when(F.col("Mag").isNull() & F.col("Game").isin([2, 6, 7, 8]), F.col("Str")).otherwise(F.col("Mag")))
